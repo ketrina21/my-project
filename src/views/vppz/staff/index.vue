@@ -1,4 +1,5 @@
 <template>
+    <PanelHeader :route="route" />
     <div class="btns">
         <el-button type="primary" :icon="Plus" @click="open(null)" size="small">新增</el-button>
         <el-popconfirm
@@ -34,14 +35,14 @@
         <el-table-column prop="mobile" label="手机号"/>
         <el-table-column prop="active" label="状态">
             <template #default="scope">
-                <el-tag :type="scope.row.active ? 'success' : 'danger'">{{ scope.row.active ? '正常' : '禁用' }}</el-tag>
+                <el-tag :type="scope.row.active ? 'success' : 'danger'">{{ scope.row.active ? '正常' : '失效' }}</el-tag>
             </template>
         </el-table-column>
         <el-table-column  label="创建时间">
             <template #default="scope">
                 <div class="flex-box">
                     <el-icon><Clock /></el-icon>
-                    <span style="margin-left: 10px;">{{ scope.row.create_time }}</span> 
+                    <span style="margin-left: 10px;">{{ dayjs(scope.row.create_time).format('YYYY-MM-DD') }}</span> 
                 </div>
             </template>
         </el-table-column>
@@ -102,7 +103,7 @@
             <el-form-item label="手机号" prop="mobile">
                 <el-input v-model="form.mobile" placeholder="请输入手机号"></el-input>
             </el-form-item>
-            <el-form-item label="是否激活" prop="active">
+            <el-form-item label="是否生效" prop="active">
                 <el-radio-group v-model="form.active">
                     <el-radio :value="0" >失效</el-radio>
                     <el-radio :value="1" >生效</el-radio>
@@ -142,7 +143,11 @@
 import { id } from 'element-plus/es/locale/index.mjs';
 import { ref , reactive,onMounted ,nextTick}  from 'vue'
 import { Plus,InfoFilled,Delete } from '@element-plus/icons-vue'
-import { photoList,companion,companionList } from '../../../api'
+import { photoList,companion,companionList,deleteCompanion } from '../../../api'
+import { useRoute } from 'vue-router';
+import dayjs from 'dayjs';
+
+const route = useRoute();
 
 const paginationData = reactive({
     pageNum:1,
@@ -246,11 +251,29 @@ const handleCurrentChange=(val)=>{
     paginationData.pageNum=val
     getListData()
 }
+//存储选中的陪护师
+const selectTableData = ref([])
 //选择陪护师的回调
 const handleSelectionChange=(val)=>{
-    console.log(val)
+    selectTableData.value = val.map(item=>({id:item.id}))
 }
-
+//确认删除
+const confirmEvent=()=>{
+    //没有选择
+    if(selectTableData.value.length === 0) {
+        return ElMessage.warning('请选择至少一项数据')
+    }
+    //删除选中的陪护师
+    deleteCompanion({id:selectTableData.value}).then(({data})=>{
+        if(data.code === 10000){
+            ElMessage.success('删除成功')
+            getListData()
+        }
+        else{
+            ElMessage.error(data.message)
+        }
+    })
+}
 </script>
 <style lang="less" scoped>
 .btns {
